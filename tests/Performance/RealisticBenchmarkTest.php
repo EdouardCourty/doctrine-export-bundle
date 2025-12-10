@@ -6,11 +6,15 @@ namespace Ecourty\DoctrineExportBundle\Tests\Performance;
 
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Tools\SchemaTool;
+use Doctrine\Persistence\ManagerRegistry;
+use Ecourty\DoctrineExportBundle\Contract\ExportStrategyInterface;
 use Ecourty\DoctrineExportBundle\Enum\ExportFormat;
 use Ecourty\DoctrineExportBundle\Service\DoctrineExporter;
 use Ecourty\DoctrineExportBundle\Service\ExportOptionsResolver;
 use Ecourty\DoctrineExportBundle\Service\ExportStrategyRegistry;
 use Ecourty\DoctrineExportBundle\Service\ValueNormalizer;
+use Ecourty\DoctrineExportBundle\Strategy\CsvExportStrategy;
+use Ecourty\DoctrineExportBundle\Strategy\JsonExportStrategy;
 use Ecourty\DoctrineExportBundle\Strategy\XmlExportStrategy;
 use Ecourty\DoctrineExportBundle\Tests\App\TestKernel;
 use Ecourty\DoctrineExportBundle\Tests\Fixtures\Entity\User;
@@ -23,10 +27,12 @@ use Symfony\Component\PropertyAccess\PropertyAccessorInterface;
  * @group benchmark
  * @group stress
  */
-class XmlRealisticBenchmarkTest extends KernelTestCase
+class RealisticBenchmarkTest extends KernelTestCase
 {
     private const ENTITY_COUNT = 10_000;
     private const ITERATIONS = 3;
+    private const MEMORY_LIMIT_MB = 1.0;
+    private const TIME_LIMIT_SECONDS = 1.0;
 
     private EntityManagerInterface $entityManager;
     private TestDataLoader $dataLoader;
@@ -57,24 +63,50 @@ class XmlRealisticBenchmarkTest extends KernelTestCase
         $this->entityManager->close();
     }
 
-    public function testRealisticBenchmarkXmlWithXMLWriter(): void
+    public function testRealisticBenchmarkCsv(): void
+    {
+        $stats = $this->runBenchmark(ExportFormat::CSV, new CsvExportStrategy());
+
+        $this->assertLessThan(self::TIME_LIMIT_SECONDS, $stats['avgTime'], 'CSV export should be under 1 second');
+        $this->assertLessThan(self::MEMORY_LIMIT_MB, $stats['avgMem'], 'CSV memory usage should stay under 1 MB');
+    }
+
+    public function testRealisticBenchmarkJson(): void
+    {
+        $stats = $this->runBenchmark(ExportFormat::JSON, new JsonExportStrategy());
+
+        $this->assertLessThan(self::TIME_LIMIT_SECONDS, $stats['avgTime'], 'JSON export should be under 1 second');
+        $this->assertLessThan(self::MEMORY_LIMIT_MB, $stats['avgMem'], 'JSON memory usage should stay under 1 MB');
+    }
+
+    public function testRealisticBenchmarkXml(): void
+    {
+        $stats = $this->runBenchmark(ExportFormat::XML, new XmlExportStrategy());
+
+        $this->assertLessThan(self::TIME_LIMIT_SECONDS, $stats['avgTime'], 'XML export should be under 1 second');
+        $this->assertLessThan(self::MEMORY_LIMIT_MB, $stats['avgMem'], 'XML memory usage should stay under 1 MB');
+    }
+
+    /**
+     * @return array{avgTime: float, avgMem: float, throughput: float}
+     */
+    private function runBenchmark(ExportFormat $format, ExportStrategyInterface $strategy): array
     {
         $managerRegistry = self::getContainer()->get('doctrine');
-        $this->assertInstanceOf(\Doctrine\Persistence\ManagerRegistry::class, $managerRegistry);
+        $this->assertInstanceOf(ManagerRegistry::class, $managerRegistry);
 
         $propertyAccessor = self::getContainer()->get(PropertyAccessorInterface::class);
         $this->assertInstanceOf(PropertyAccessorInterface::class, $propertyAccessor);
 
-        // Benchmark XML export with XMLWriter
         $times = [];
         $memory = [];
 
         for ($i = 0; $i < self::ITERATIONS; ++$i) {
-            $registry = new ExportStrategyRegistry([new XmlExportStrategy()]);
+            $registry = new ExportStrategyRegistry([$strategy]);
             $valueNormalizer = new ValueNormalizer(new ExportOptionsResolver());
             $exporter = new DoctrineExporter($managerRegistry, $registry, $propertyAccessor, $valueNormalizer);
 
-            $filePath = sys_get_temp_dir() . '/realistic_xml_' . uniqid() . '.xml';
+            $filePath = sys_get_temp_dir() . '/realistic_' . $format->value . '_' . uniqid() . '.' . $format->getExtension();
 
             gc_collect_cycles();
             $memBefore = memory_get_usage(true);
@@ -82,7 +114,7 @@ class XmlRealisticBenchmarkTest extends KernelTestCase
 
             $exporter->exportToFile(
                 entityClass: User::class,
-                format: ExportFormat::XML,
+                format: $format,
                 filePath: $filePath
             );
 
@@ -100,14 +132,15 @@ class XmlRealisticBenchmarkTest extends KernelTestCase
             unlink($filePath);
         }
 
-        // Calculate statistics
         $avgTime = array_sum($times) / \count($times);
         $avgMem = array_sum($memory) / \count($memory);
         $throughput = self::ENTITY_COUNT / $avgTime;
 
-        // Assertions
-        $this->assertLessThan(1.0, $avgTime, 'Export should be under 1 second');
-        $this->assertLessThan(5.0, $avgMem, 'Memory usage should stay under 5 MB');
+        return [
+            'avgTime' => $avgTime,
+            'avgMem' => $avgMem,
+            'throughput' => $throughput,
+        ];
     }
 
     private function createSchema(): void

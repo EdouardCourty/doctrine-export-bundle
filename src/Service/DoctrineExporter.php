@@ -79,6 +79,7 @@ class DoctrineExporter implements DoctrineExporterInterface
 
             $data = $this->extractEntityData($entity, $selectedFields, $metadata, $options);
             yield $strategy->formatRow($data);
+            unset($data, $entity);
         }
 
         $footer = $strategy->generateFooter();
