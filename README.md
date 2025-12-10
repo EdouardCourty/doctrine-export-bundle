@@ -1,12 +1,10 @@
 # Doctrine Export Bundle
 
-[![CI](https://github.com/ecourty/doctrine-export-bundle/workflows/CI/badge.svg)](https://github.com/ecourty/doctrine-export-bundle/actions)
-[![PHP Version](https://img.shields.io/badge/php-%3E%3D8.1-blue)](https://php.net)
-[![Symfony Compatibility](https://img.shields.io/badge/symfony-7%20%7C%208-green)](https://symfony.com)
+[![CI](https://github.com/EdouardCourty/doctrine-export-bundle/actions/workflows/ci.yml/badge.svg)](https://github.com/EdouardCourty/doctrine-export-bundle/actions/workflows/ci.yml)
 
 A flexible and extensible Symfony bundle for exporting Doctrine entities to various formats (CSV, JSON, XML).
 
-**Compatible with Symfony 7.x and 8.x** 🎉
+**Compatible with PHP 8.3+ and Symfony 7.x and 8.x** 🎉
 
 ## 📖 Table of Contents
 
