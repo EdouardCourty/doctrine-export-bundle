@@ -1,0 +1,22 @@
+services:
+    _defaults:
+        autowire: true
+        autoconfigure: true
+
+    Ecourty\DoctrineExportBundle\:
+        resource: '../../'
+        exclude: '../../{DependencyInjection,Enum,Exception,Resources,Contract}'
+
+    Ecourty\DoctrineExportBundle\Service\ExportStrategyRegistry:
+        arguments:
+            $strategies: !tagged_iterator doctrine_export.strategy
+
+    Ecourty\DoctrineExportBundle\Service\DoctrineExporter:
+        public: true
+        arguments:
+            $managerRegistry: '@doctrine'
+            $propertyAccessor: '@property_accessor'
+
+    Ecourty\DoctrineExportBundle\Contract\DoctrineExporterInterface:
+        alias: Ecourty\DoctrineExportBundle\Service\DoctrineExporter
+        public: true

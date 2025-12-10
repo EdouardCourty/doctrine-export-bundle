@@ -1,0 +1,10 @@
+.phpunit.cache
+vendor/
+composer.lock
+.idea/
+*.log
+.DS_Store
+.php-cs-fixer.cache
+.phpstan/
+phpstan.neon.dist
+var/
