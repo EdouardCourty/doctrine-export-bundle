@@ -11,13 +11,16 @@ class CsvExportStrategy implements ExportStrategyInterface
 {
     private string $delimiter;
     private string $enclosure;
+    private string $escape;
 
     public function __construct(
         string $delimiter = ',',
         string $enclosure = '"',
+        string $escape = '\\',
     ) {
         $this->delimiter = $delimiter;
         $this->enclosure = $enclosure;
+        $this->escape = $escape;
     }
 
     public function getFormat(): ExportFormat
@@ -35,17 +38,24 @@ class CsvExportStrategy implements ExportStrategyInterface
 
     public function formatRow(array $data): string
     {
-        $values = array_map(
-            fn (mixed $value): string => $this->valueToString($value),
-            array_values($data)
-        );
-
-        $formatted = [];
-        foreach ($values as $value) {
-            $formatted[] = $this->escapeField($value);
+        $stream = fopen('php://memory', 'r+');
+        if (false === $stream) {
+            throw new \RuntimeException('Failed to open temporary stream for CSV formatting');
         }
 
-        return implode($this->delimiter, $formatted) . \PHP_EOL;
+        $values = [];
+        foreach ($data as $value) {
+            $values[] = $this->valueToString($value);
+        }
+
+        fputcsv($stream, $values, $this->delimiter, $this->enclosure, $this->escape);
+        rewind($stream);
+        $result = stream_get_contents($stream);
+        fclose($stream);
+
+        unset($values);
+
+        return false !== $result ? $result : '';
     }
 
     private function valueToString(mixed $value): string
@@ -55,25 +65,6 @@ class CsvExportStrategy implements ExportStrategyInterface
         }
 
         return \is_scalar($value) || $value instanceof \Stringable ? (string) $value : '';
-    }
-
-    private function escapeField(string $value): string
-    {
-        // Check if field needs quoting
-        $needsQuoting = str_contains($value, $this->delimiter)
-            || str_contains($value, $this->enclosure)
-            || str_contains($value, "\n")
-            || str_contains($value, "\r");
-
-        if (!$needsQuoting) {
-            return $value;
-        }
-
-        // Escape enclosure characters by doubling them
-        $escaped = str_replace($this->enclosure, $this->enclosure . $this->enclosure, $value);
-
-        // Wrap in enclosure
-        return $this->enclosure . $escaped . $this->enclosure;
     }
 
     public function generateFooter(): ?string

@@ -20,7 +20,8 @@ use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 class LargeDatasetExportTest extends KernelTestCase
 {
     private const ENTITY_COUNT = 10_000;
-    private const MEMORY_LIMIT_MB = 5.0;
+    private const MEMORY_LIMIT_CSV_MB = 2.5;
+    private const MEMORY_LIMIT_JSON_XML_MB = 1.0;
     private const TIME_LIMIT_SECONDS = 1.0;
 
     private EntityManagerInterface $entityManager;
@@ -82,8 +83,8 @@ class LargeDatasetExportTest extends KernelTestCase
         $this->assertCount(self::ENTITY_COUNT + 1, $lines); // +1 for header
 
         // Performance assertions
-        $this->assertLessThan(self::MEMORY_LIMIT_MB, $memoryUsedMB,
-            sprintf('Memory usage (%.2f MB) exceeded limit of %.2f MB', $memoryUsedMB, self::MEMORY_LIMIT_MB)
+        $this->assertLessThan(self::MEMORY_LIMIT_CSV_MB, $memoryUsedMB,
+            sprintf('Memory usage (%.2f MB) exceeded limit of %.2f MB', $memoryUsedMB, self::MEMORY_LIMIT_CSV_MB)
         );
 
         $this->assertLessThan(self::TIME_LIMIT_SECONDS, $duration,
@@ -119,8 +120,8 @@ class LargeDatasetExportTest extends KernelTestCase
         $this->assertIsArray($data);
         $this->assertCount(self::ENTITY_COUNT, $data);
 
-        $this->assertLessThan(self::MEMORY_LIMIT_MB, $memoryUsedMB,
-            sprintf('Memory usage (%.2f MB) exceeded limit of %.2f MB', $memoryUsedMB, self::MEMORY_LIMIT_MB)
+        $this->assertLessThan(self::MEMORY_LIMIT_JSON_XML_MB, $memoryUsedMB,
+            sprintf('Memory usage (%.2f MB) exceeded limit of %.2f MB', $memoryUsedMB, self::MEMORY_LIMIT_JSON_XML_MB)
         );
 
         $this->assertLessThan(self::TIME_LIMIT_SECONDS, $duration,
@@ -160,8 +161,8 @@ class LargeDatasetExportTest extends KernelTestCase
         $itemCount = substr_count($content, '<item>');
         $this->assertSame(self::ENTITY_COUNT, $itemCount);
 
-        $this->assertLessThan(self::MEMORY_LIMIT_MB, $memoryUsedMB,
-            sprintf('Memory usage (%.2f MB) exceeded limit of %.2f MB', $memoryUsedMB, self::MEMORY_LIMIT_MB)
+        $this->assertLessThan(self::MEMORY_LIMIT_JSON_XML_MB, $memoryUsedMB,
+            sprintf('Memory usage (%.2f MB) exceeded limit of %.2f MB', $memoryUsedMB, self::MEMORY_LIMIT_JSON_XML_MB)
         );
 
         $this->assertLessThan(self::TIME_LIMIT_SECONDS, $duration,
@@ -192,8 +193,8 @@ class LargeDatasetExportTest extends KernelTestCase
 
         $this->assertSame(self::ENTITY_COUNT + 1, $lineCount); // +1 for header
 
-        $this->assertLessThan(self::MEMORY_LIMIT_MB, $memoryUsedMB,
-            sprintf('Generator memory usage (%.2f MB) exceeded limit of %.2f MB', $memoryUsedMB, self::MEMORY_LIMIT_MB)
+        $this->assertLessThan(self::MEMORY_LIMIT_CSV_MB, $memoryUsedMB,
+            sprintf('Generator memory usage (%.2f MB) exceeded limit of %.2f MB', $memoryUsedMB, self::MEMORY_LIMIT_CSV_MB)
         );
 
         $this->assertLessThan(self::TIME_LIMIT_SECONDS, $duration,
