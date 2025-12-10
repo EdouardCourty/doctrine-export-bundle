@@ -5,7 +5,7 @@
     "keywords": ["symfony", "doctrine", "export", "csv", "json", "xml", "bundle"],
     "license": "MIT",
     "require": {
-        "php": ">=8.1",
+        "php": ">=8.3",
         "ext-xmlwriter": "*",
         "symfony/framework-bundle": "^7.0|^8.0",
         "symfony/property-access": "^7.0|^8.0",
