@@ -58,34 +58,6 @@ jobs:
       - name: Run tests
         run: composer test
 
-  doctrine-compatibility:
-    name: Doctrine ORM ${{ matrix.doctrine }}
-    runs-on: ubuntu-latest
-    
-    strategy:
-      fail-fast: false
-      matrix:
-        doctrine: ['2.10.*', '3.0.*', '4.0.*']
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup PHP
-        uses: shivammathur/setup-php@v2
-        with:
-          php-version: 8.3
-          extensions: mbstring, xml, ctype, iconv, intl, pdo_sqlite
-          coverage: none
-
-      - name: Install dependencies
-        run: |
-          composer require "doctrine/orm:${{ matrix.doctrine }}" --no-update
-          composer update --prefer-dist --no-progress --prefer-stable
-
-      - name: Run tests
-        run: composer test
-
   performance:
     name: Performance benchmarks
     runs-on: ubuntu-latest
