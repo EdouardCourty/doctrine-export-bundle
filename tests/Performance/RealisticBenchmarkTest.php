@@ -9,7 +9,9 @@ use Doctrine\ORM\Tools\SchemaTool;
 use Doctrine\Persistence\ManagerRegistry;
 use Ecourty\DoctrineExportBundle\Contract\ExportStrategyInterface;
 use Ecourty\DoctrineExportBundle\Enum\ExportFormat;
+use Ecourty\DoctrineExportBundle\Service\DefaultEntityProcessor;
 use Ecourty\DoctrineExportBundle\Service\DoctrineExporter;
+use Ecourty\DoctrineExportBundle\Service\EntityProcessorChain;
 use Ecourty\DoctrineExportBundle\Service\ExportOptionsResolver;
 use Ecourty\DoctrineExportBundle\Service\ExportStrategyRegistry;
 use Ecourty\DoctrineExportBundle\Service\ValueNormalizer;
@@ -103,8 +105,11 @@ class RealisticBenchmarkTest extends KernelTestCase
 
         for ($i = 0; $i < self::ITERATIONS; ++$i) {
             $registry = new ExportStrategyRegistry([$strategy]);
-            $valueNormalizer = new ValueNormalizer(new ExportOptionsResolver());
-            $exporter = new DoctrineExporter($managerRegistry, $registry, $propertyAccessor, $valueNormalizer);
+            $optionsResolver = new ExportOptionsResolver();
+            $valueNormalizer = new ValueNormalizer($optionsResolver);
+            $defaultProcessor = new DefaultEntityProcessor($propertyAccessor, $valueNormalizer, $managerRegistry);
+            $processorChain = new EntityProcessorChain($defaultProcessor, $optionsResolver);
+            $exporter = new DoctrineExporter($managerRegistry, $registry, $processorChain);
 
             $filePath = sys_get_temp_dir() . '/realistic_' . $format->value . '_' . uniqid() . '.' . $format->getExtension();
 

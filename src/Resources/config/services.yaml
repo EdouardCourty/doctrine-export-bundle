@@ -11,11 +11,22 @@ services:
         arguments:
             $strategies: !tagged_iterator doctrine_export.strategy
 
+    Ecourty\DoctrineExportBundle\Service\DefaultEntityProcessor:
+        arguments:
+            $propertyAccessor: '@property_accessor'
+            $valueNormalizer: '@Ecourty\DoctrineExportBundle\Service\ValueNormalizer'
+            $managerRegistry: '@doctrine'
+
+    Ecourty\DoctrineExportBundle\Service\EntityProcessorChain:
+        arguments:
+            $defaultProcessor: '@Ecourty\DoctrineExportBundle\Service\DefaultEntityProcessor'
+            $optionsResolver: '@Ecourty\DoctrineExportBundle\Service\ExportOptionsResolver'
+
     Ecourty\DoctrineExportBundle\Service\DoctrineExporter:
         public: true
         arguments:
             $managerRegistry: '@doctrine'
-            $propertyAccessor: '@property_accessor'
+            $processorChain: '@Ecourty\DoctrineExportBundle\Service\EntityProcessorChain'
 
     Ecourty\DoctrineExportBundle\Contract\DoctrineExporterInterface:
         alias: Ecourty\DoctrineExportBundle\Service\DoctrineExporter

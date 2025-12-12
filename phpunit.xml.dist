@@ -3,6 +3,9 @@
          xsi:noNamespaceSchemaLocation="https://schema.phpunit.de/10.0/phpunit.xsd"
          bootstrap="vendor/autoload.php"
          colors="true"
+         beStrictAboutTestsThatDoNotTestAnything="true"
+         beStrictAboutChangesToGlobalState="false"
+         failOnRisky="false"
          cacheDirectory=".phpunit.cache">
     <testsuites>
         <testsuite name="Doctrine Export Bundle Test Suite">

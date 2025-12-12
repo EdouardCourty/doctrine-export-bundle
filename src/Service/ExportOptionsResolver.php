@@ -38,4 +38,12 @@ final class ExportOptionsResolver
     {
         return (bool) ($options[DoctrineExporterInterface::OPTION_BOOLEAN_TO_INTEGER] ?? true);
     }
+
+    /**
+     * @param array<string, mixed> $options
+     */
+    public function isDefaultProcessorDisabled(array $options): bool
+    {
+        return (bool) ($options[DoctrineExporterInterface::OPTION_DISABLE_DEFAULT_PROCESSOR] ?? false);
+    }
 }

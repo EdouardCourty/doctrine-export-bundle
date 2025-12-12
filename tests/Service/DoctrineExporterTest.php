@@ -9,34 +9,37 @@ use Doctrine\ORM\Mapping\ClassMetadata;
 use Doctrine\Persistence\ManagerRegistry;
 use Ecourty\DoctrineExportBundle\Enum\ExportFormat;
 use Ecourty\DoctrineExportBundle\Exception\InvalidCriteriaException;
+use Ecourty\DoctrineExportBundle\Service\DefaultEntityProcessor;
 use Ecourty\DoctrineExportBundle\Service\DoctrineExporter;
+use Ecourty\DoctrineExportBundle\Service\EntityProcessorChain;
 use Ecourty\DoctrineExportBundle\Service\ExportOptionsResolver;
 use Ecourty\DoctrineExportBundle\Service\ExportStrategyRegistry;
 use Ecourty\DoctrineExportBundle\Service\ValueNormalizer;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
-use Symfony\Component\PropertyAccess\PropertyAccessorInterface;
+use Symfony\Component\PropertyAccess\PropertyAccessor;
 
 class DoctrineExporterTest extends TestCase
 {
     private DoctrineExporter $exporter;
     private ManagerRegistry&MockObject $managerRegistry;
     private ExportStrategyRegistry&MockObject $strategyRegistry;
-    private PropertyAccessorInterface&MockObject $propertyAccessor;
-    private ValueNormalizer $valueNormalizer;
 
     protected function setUp(): void
     {
         $this->managerRegistry = $this->createMock(ManagerRegistry::class);
         $this->strategyRegistry = $this->createMock(ExportStrategyRegistry::class);
-        $this->propertyAccessor = $this->createMock(PropertyAccessorInterface::class);
-        $this->valueNormalizer = new ValueNormalizer(new ExportOptionsResolver());
+
+        $propertyAccessor = new PropertyAccessor();
+        $optionsResolver = new ExportOptionsResolver();
+        $valueNormalizer = new ValueNormalizer($optionsResolver);
+        $defaultProcessor = new DefaultEntityProcessor($propertyAccessor, $valueNormalizer, $this->managerRegistry);
+        $processorChain = new EntityProcessorChain($defaultProcessor, $optionsResolver);
 
         $this->exporter = new DoctrineExporter(
             $this->managerRegistry,
             $this->strategyRegistry,
-            $this->propertyAccessor,
-            $this->valueNormalizer
+            $processorChain
         );
     }
 
