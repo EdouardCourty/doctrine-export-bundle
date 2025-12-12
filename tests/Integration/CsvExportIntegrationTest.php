@@ -215,7 +215,8 @@ class CsvExportIntegrationTest extends IntegrationTestCase
             entityClass: User::class,
             format: ExportFormat::CSV,
             filePath: $filePath,
-            fields: ['id', 'invalidField']
+            fields: ['id', 'invalidField'],
+            options: [DoctrineExporterInterface::OPTION_STRICT_FIELDS => true]
         );
     }
 }

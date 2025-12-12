@@ -4,7 +4,7 @@
 
 A flexible and extensible Symfony bundle for exporting Doctrine entities to various formats (CSV, JSON, XML).
 
-**Compatible with PHP 8.3+ and Symfony 7.x and 8.x** 🎉
+**Compatible with PHP 8.3+, Symfony 7.x/8.x, and Doctrine ORM 3.x/4.x** 🎉
 
 ## 📖 Table of Contents
 
@@ -16,6 +16,7 @@ A flexible and extensible Symfony bundle for exporting Doctrine entities to vari
   - [Basic Export to File](#basic-export-to-file)
   - [Streaming Export (Binary Response)](#streaming-export-binary-response)
 - [Advanced Options](#advanced-options)
+  - [Custom Entity Processors](#custom-entity-processors)
   - [Field Selection](#field-selection)
   - [Export Options](#export-options)
   - [Field Validation](#field-validation)
@@ -177,6 +178,117 @@ $exporter->exportToFile(User::class, ExportFormat::XML, '/tmp/users.xml');
 
 ## Advanced Options
 
+### Custom Entity Processors
+
+Implement custom data transformations with entity processors. They allow you to modify exported data, add virtual fields, or apply business logic during export.
+
+#### Creating a Custom Processor
+
+```php
+use Ecourty\DoctrineExportBundle\Contract\EntityProcessorInterface;
+
+class EmailMaskingProcessor implements EntityProcessorInterface
+{
+    public function process(object $entity, array $data, array $options): array
+    {
+        // Mask email addresses
+        if (isset($data['email'])) {
+            $data['email'] = preg_replace('/(?<=.).(?=.*@)/', '*', $data['email']);
+        }
+        
+        return $data;
+    }
+}
+```
+
+#### Using Processors
+
+```php
+$exporter->exportToFile(
+    entityClass: User::class,
+    format: ExportFormat::CSV,
+    filePath: '/tmp/users.csv',
+    processors: [new EmailMaskingProcessor()]
+);
+```
+
+#### Adding Virtual Fields
+
+```php
+class UserVirtualFieldsProcessor implements EntityProcessorInterface
+{
+    public function process(object $entity, array $data, array $options): array
+    {
+        assert($entity instanceof User);
+        
+        // Add computed fields
+        $data['displayName'] = $entity->getFirstName() . ' ' . $entity->getLastName();
+        $data['ageCategory'] = $entity->getAge() >= 30 ? 'senior' : 'junior';
+        
+        return $data;
+    }
+}
+
+// Export with virtual fields
+$exporter->exportToFile(
+    entityClass: User::class,
+    format: ExportFormat::JSON,
+    filePath: '/tmp/users.json',
+    fields: ['firstName', 'displayName', 'ageCategory'], // Include virtual fields
+    processors: [new UserVirtualFieldsProcessor()]
+);
+```
+
+#### Chaining Multiple Processors
+
+Processors are executed in order, allowing you to compose transformations:
+
+```php
+$exporter->exportToFile(
+    entityClass: User::class,
+    format: ExportFormat::CSV,
+    filePath: '/tmp/users.csv',
+    processors: [
+        new EmailMaskingProcessor(),      // First: mask emails
+        new UppercaseProcessor(),          // Then: uppercase all strings
+        new UserVirtualFieldsProcessor(), // Finally: add virtual fields
+    ]
+);
+```
+
+#### Performance Optimization: Disable Default Processor
+
+When using a fully custom processor that handles all data extraction, disable the default processor for better performance:
+
+```php
+class FullyCustomProcessor implements EntityProcessorInterface
+{
+    public function process(object $entity, array $data, array $options): array
+    {
+        // Handle ALL field extraction yourself
+        $data['id'] = $entity->getId();
+        $data['email'] = $entity->getEmail();
+        // ... handle all fields
+        
+        return $data;
+    }
+}
+
+$exporter->exportToFile(
+    entityClass: User::class,
+    format: ExportFormat::JSON,
+    filePath: '/tmp/users.json',
+    fields: ['id', 'email'],
+    options: [
+        // Skip default processor - custom processor handles everything
+        DoctrineExporterInterface::OPTION_DISABLE_DEFAULT_PROCESSOR => true,
+    ],
+    processors: [new FullyCustomProcessor()]
+);
+```
+
+**Note**: The default processor handles property access, associations, and data normalization. Only disable it when your custom processor fully replaces this functionality.
+
 ### Field Selection
 
 You can specify which fields to export. If not specified, all entity fields are exported:
@@ -219,9 +331,26 @@ $exporter->exportToFile(
         
         // Custom null value representation (default: null)
         DoctrineExporterInterface::OPTION_NULL_VALUE => '',
+        
+        // Strict field validation - throw exception if field doesn't exist (default: false)
+        DoctrineExporterInterface::OPTION_STRICT_FIELDS => true,
+        
+        // Disable default processor for performance (default: false)
+        // Only use when custom processor handles all data extraction
+        DoctrineExporterInterface::OPTION_DISABLE_DEFAULT_PROCESSOR => true,
     ]
 );
 ```
+
+#### Available Options
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `OPTION_BOOLEAN_TO_INTEGER` | `bool` | `true` | Convert boolean values to integers (1/0) instead of strings ('true'/'false') |
+| `OPTION_DATETIME_FORMAT` | `string` | `DateTimeInterface::ATOM` | PHP date format for DateTime fields (e.g., 'Y-m-d H:i:s', 'c') |
+| `OPTION_NULL_VALUE` | `string\|int\|float` | `null` | Custom representation for null values (e.g., 'NULL', 'N/A', '') |
+| `OPTION_STRICT_FIELDS` | `bool` | `false` | Throw exception if a requested field doesn't exist on the entity |
+| `OPTION_DISABLE_DEFAULT_PROCESSOR` | `bool` | `false` | Skip default processor when using custom processors that handle all processing |
 
 ### Field Validation
 
@@ -332,11 +461,9 @@ composer test:performance
 
 ## Requirements
 
-- PHP 8.1 or higher
+- PHP 8.3 or higher
 - Symfony 7.0 or 8.0
-- Doctrine ORM 2.10, 3.0, or 4.0
-
-> **💡 Recommended**: Use Doctrine ORM 3.x for new projects. It's faster, actively maintained, and has better PHP 8.1+ support. ORM 2.x is in maintenance mode.
+- Doctrine ORM 3.0 or 4.0
 
 ## License
 

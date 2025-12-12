@@ -4,7 +4,8 @@
     "description": "A Symfony bundle for exporting Doctrine entities to various formats (CSV, JSON, XML)",
     "keywords": ["symfony", "doctrine", "export", "csv", "json", "xml", "bundle"],
     "license": "MIT",
-    "minimum-stability": "dev",
+    "minimum-stability": "stable",
+    "prefer-stable": true,
     "require": {
         "php": ">=8.3",
         "ext-xmlwriter": "*",

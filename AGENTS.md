@@ -9,10 +9,10 @@
 - **Safe**: Never modify or clear the EntityManager that belongs to the user's application
 
 ## Tech Stack
-- PHP 8.1+ (enums, typed properties, named arguments)
-- Symfony 6.0|7.0 (Framework Bundle, Property Accessor)
-- Doctrine ORM 2.10|3.0
-- PHPUnit 10+ for testing
+- PHP 8.3+ (enums, typed properties, named arguments)
+- Symfony 7.0|8.0 (Framework Bundle, Property Accessor)
+- Doctrine ORM 3.0|4.0
+- PHPUnit 12+ for testing
 - PHPStan Level 9 for static analysis
 - PHP-CS-Fixer for code style
 
@@ -56,7 +56,7 @@ composer test        # Run PHPUnit tests
 - PSR-12 code style enforced by PHP-CS-Fixer
 - PHPStan level 9 - no `@phpstan-ignore` comments
 - Type everything: properties, parameters, returns (no `mixed`)
-- Use PHP 8.1+ features: enums, readonly properties, named arguments
+- Use PHP 8.3+ features: enums, readonly properties, named arguments
 - Document public APIs with PHPDoc (interfaces, public methods)
 - No comments for obvious code; comment only complex logic
 

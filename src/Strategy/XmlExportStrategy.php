@@ -9,6 +9,7 @@ use Ecourty\DoctrineExportBundle\Enum\ExportFormat;
 
 class XmlExportStrategy implements ExportStrategyInterface
 {
+    use ValueStringifierTrait;
     private string $rootElement;
     private string $itemElement;
     private bool $prettyPrint;
@@ -66,15 +67,6 @@ class XmlExportStrategy implements ExportStrategyInterface
         }
 
         return $result . \PHP_EOL;
-    }
-
-    private function valueToString(mixed $value): string
-    {
-        if (is_array($value)) {
-            return json_encode($value) ?: '[]';
-        }
-
-        return \is_scalar($value) || $value instanceof \Stringable ? (string) $value : '';
     }
 
     public function generateFooter(): ?string

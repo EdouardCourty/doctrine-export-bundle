@@ -7,11 +7,9 @@ namespace Ecourty\DoctrineExportBundle\Tests\Unit\Service;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Mapping\ClassMetadata;
 use Doctrine\Persistence\ManagerRegistry;
-use Ecourty\DoctrineExportBundle\Service\DoctrineExporter;
+use Ecourty\DoctrineExportBundle\Service\DefaultEntityProcessor;
 use Ecourty\DoctrineExportBundle\Service\ExportOptionsResolver;
-use Ecourty\DoctrineExportBundle\Service\ExportStrategyRegistry;
 use Ecourty\DoctrineExportBundle\Service\ValueNormalizer;
-use Ecourty\DoctrineExportBundle\Strategy\JsonExportStrategy;
 use Ecourty\DoctrineExportBundle\Tests\Fixtures\TestObject\ArticleWithAuthor;
 use Ecourty\DoctrineExportBundle\Tests\Fixtures\TestObject\ArticleWithNullAuthor;
 use Ecourty\DoctrineExportBundle\Tests\Fixtures\TestObject\ArticleWithTags;
@@ -31,6 +29,9 @@ class DoctrineExporterAssociationTest extends TestCase
         $metadata->method('hasAssociation')->willReturnCallback(
             fn (string $field) => $field === 'author'
         );
+        $metadata->method('hasField')->willReturnCallback(
+            fn (string $field) => $field === 'title'
+        );
         $metadata->method('getIdentifierValues')->willReturn(['id' => 42]);
 
         $em = $this->createMock(EntityManagerInterface::class);
@@ -39,18 +40,12 @@ class DoctrineExporterAssociationTest extends TestCase
         $registry = $this->createMock(ManagerRegistry::class);
         $registry->method('getManagerForClass')->willReturn($em);
 
-        $strategyRegistry = new ExportStrategyRegistry([new JsonExportStrategy()]);
         $propertyAccessor = new PropertyAccessor();
         $valueNormalizer = new ValueNormalizer(new ExportOptionsResolver());
+        $defaultProcessor = new DefaultEntityProcessor($propertyAccessor, $valueNormalizer, $registry);
 
-        $exporter = new DoctrineExporter($registry, $strategyRegistry, $propertyAccessor, $valueNormalizer);
-
-        // Use reflection to test private method behavior indirectly
-        $reflection = new \ReflectionClass($exporter);
-        $method = $reflection->getMethod('extractEntityData');
-
-        /** @var array<string, mixed> $result */
-        $result = $method->invoke($exporter, $article, ['title', 'author'], $metadata, []);
+        $data = ['title' => null, 'author' => null];
+        $result = $defaultProcessor->process($article, $data, []);
 
         $this->assertSame('Test Article', $result['title']);
         $this->assertSame(42, $result['author']);
@@ -68,6 +63,9 @@ class DoctrineExporterAssociationTest extends TestCase
         $metadata->method('hasAssociation')->willReturnCallback(
             fn (string $field) => $field === 'tags'
         );
+        $metadata->method('hasField')->willReturnCallback(
+            fn (string $field) => $field === 'title'
+        );
         $metadata->method('getIdentifierValues')->willReturnOnConsecutiveCalls(
             ['id' => 1],
             ['id' => 2],
@@ -80,18 +78,12 @@ class DoctrineExporterAssociationTest extends TestCase
         $registry = $this->createMock(ManagerRegistry::class);
         $registry->method('getManagerForClass')->willReturn($em);
 
-        $strategyRegistry = new ExportStrategyRegistry([new JsonExportStrategy()]);
         $propertyAccessor = new PropertyAccessor();
         $valueNormalizer = new ValueNormalizer(new ExportOptionsResolver());
+        $defaultProcessor = new DefaultEntityProcessor($propertyAccessor, $valueNormalizer, $registry);
 
-        $exporter = new DoctrineExporter($registry, $strategyRegistry, $propertyAccessor, $valueNormalizer);
-
-        // Use reflection to test private method behavior indirectly
-        $reflection = new \ReflectionClass($exporter);
-        $method = $reflection->getMethod('extractEntityData');
-
-        /** @var array<string, mixed> $result */
-        $result = $method->invoke($exporter, $article, ['title', 'tags'], $metadata, []);
+        $data = ['title' => null, 'tags' => null];
+        $result = $defaultProcessor->process($article, $data, []);
 
         $this->assertSame('Test Article', $result['title']);
         $this->assertIsArray($result['tags']);
@@ -106,6 +98,9 @@ class DoctrineExporterAssociationTest extends TestCase
         $metadata->method('hasAssociation')->willReturnCallback(
             fn (string $field) => $field === 'author'
         );
+        $metadata->method('hasField')->willReturnCallback(
+            fn (string $field) => $field === 'title'
+        );
 
         $em = $this->createMock(EntityManagerInterface::class);
         $em->method('getClassMetadata')->willReturn($metadata);
@@ -113,18 +108,12 @@ class DoctrineExporterAssociationTest extends TestCase
         $registry = $this->createMock(ManagerRegistry::class);
         $registry->method('getManagerForClass')->willReturn($em);
 
-        $strategyRegistry = new ExportStrategyRegistry([new JsonExportStrategy()]);
         $propertyAccessor = new PropertyAccessor();
         $valueNormalizer = new ValueNormalizer(new ExportOptionsResolver());
+        $defaultProcessor = new DefaultEntityProcessor($propertyAccessor, $valueNormalizer, $registry);
 
-        $exporter = new DoctrineExporter($registry, $strategyRegistry, $propertyAccessor, $valueNormalizer);
-
-        // Use reflection to test private method behavior
-        $reflection = new \ReflectionClass($exporter);
-        $method = $reflection->getMethod('extractEntityData');
-
-        /** @var array<string, mixed> $result */
-        $result = $method->invoke($exporter, $article, ['title', 'author'], $metadata, []);
+        $data = ['title' => null, 'author' => null];
+        $result = $defaultProcessor->process($article, $data, []);
 
         $this->assertSame('Test Article', $result['title']);
         $this->assertNull($result['author']);

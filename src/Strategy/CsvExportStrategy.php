@@ -9,6 +9,7 @@ use Ecourty\DoctrineExportBundle\Enum\ExportFormat;
 
 class CsvExportStrategy implements ExportStrategyInterface
 {
+    use ValueStringifierTrait;
     private string $delimiter;
     private string $enclosure;
     private string $escape;
@@ -56,15 +57,6 @@ class CsvExportStrategy implements ExportStrategyInterface
         unset($values);
 
         return false !== $result ? $result : '';
-    }
-
-    private function valueToString(mixed $value): string
-    {
-        if (is_array($value)) {
-            return json_encode($value) ?: '[]';
-        }
-
-        return \is_scalar($value) || $value instanceof \Stringable ? (string) $value : '';
     }
 
     public function generateFooter(): ?string

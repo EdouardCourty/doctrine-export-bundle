@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Ecourty\DoctrineExportBundle\Service;
 
-use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\Persistence\ManagerRegistry;
 use Doctrine\Persistence\Mapping\ClassMetadata;
@@ -13,15 +12,13 @@ use Ecourty\DoctrineExportBundle\Enum\ExportFormat;
 use Ecourty\DoctrineExportBundle\Exception\EntityNotFoundException;
 use Ecourty\DoctrineExportBundle\Exception\FileWriteException;
 use Ecourty\DoctrineExportBundle\Exception\InvalidCriteriaException;
-use Symfony\Component\PropertyAccess\PropertyAccessorInterface;
 
 class DoctrineExporter implements DoctrineExporterInterface
 {
     public function __construct(
         private readonly ManagerRegistry $managerRegistry,
         private readonly ExportStrategyRegistry $strategyRegistry,
-        private readonly PropertyAccessorInterface $propertyAccessor,
-        private readonly ValueNormalizer $valueNormalizer,
+        private readonly EntityProcessorChain $processorChain,
     ) {
     }
 
@@ -35,6 +32,7 @@ class DoctrineExporter implements DoctrineExporterInterface
         array $orderBy = [],
         array $fields = [],
         array $options = [],
+        array $processors = [],
     ): void {
         $handle = @fopen($filePath, 'w');
         if (false === $handle) {
@@ -42,7 +40,7 @@ class DoctrineExporter implements DoctrineExporterInterface
         }
 
         try {
-            foreach ($this->exportToGenerator($entityClass, $format, $criteria, $limit, $offset, $orderBy, $fields, $options) as $line) {
+            foreach ($this->exportToGenerator($entityClass, $format, $criteria, $limit, $offset, $orderBy, $fields, $options, $processors) as $line) {
                 fwrite($handle, $line);
             }
         } finally {
@@ -62,6 +60,7 @@ class DoctrineExporter implements DoctrineExporterInterface
         array $orderBy = [],
         array $fields = [],
         array $options = [],
+        array $processors = [],
     ): \Generator {
         $strategy = $this->strategyRegistry->getStrategy($format);
 
@@ -77,7 +76,7 @@ class DoctrineExporter implements DoctrineExporterInterface
                 }
             }
 
-            $data = $this->extractEntityData($entity, $selectedFields, $metadata, $options);
+            $data = $this->processorChain->process($entity, $selectedFields, $options, $processors);
             yield $strategy->formatRow($data);
             unset($data, $entity);
         }
@@ -102,6 +101,27 @@ class DoctrineExporter implements DoctrineExporterInterface
         ?int $offset,
         array $orderBy,
     ): \Generator {
+        $manager = $this->getEntityManager($entityClass);
+        $metadata = $manager->getClassMetadata($entityClass);
+
+        $this->validateCriteria($metadata, $criteria);
+        $this->validateOrderBy($metadata, $orderBy);
+
+        $query = $this->buildQuery($manager, $entityClass, $criteria, $limit, $offset, $orderBy);
+        $iterator = $query->toIterable();
+
+        /** @var object $entity */
+        foreach ($iterator as $entity) {
+            yield [$entity, $metadata];
+            $manager->detach($entity);
+        }
+    }
+
+    /**
+     * @param class-string $entityClass
+     */
+    private function getEntityManager(string $entityClass): EntityManagerInterface
+    {
         $manager = $this->managerRegistry->getManagerForClass($entityClass);
         if (null === $manager) {
             throw new EntityNotFoundException(
@@ -115,15 +135,40 @@ class DoctrineExporter implements DoctrineExporterInterface
             );
         }
 
-        $metadata = $manager->getClassMetadata($entityClass);
+        return $manager;
+    }
 
-        $this->validateCriteria($metadata, $criteria);
-        $this->validateOrderBy($metadata, $orderBy);
-
+    /**
+     * @param class-string          $entityClass
+     * @param array<string, mixed>  $criteria
+     * @param array<string, string> $orderBy
+     *
+     * @return \Doctrine\ORM\Query<mixed>
+     */
+    private function buildQuery(
+        EntityManagerInterface $manager,
+        string $entityClass,
+        array $criteria,
+        ?int $limit,
+        ?int $offset,
+        array $orderBy,
+    ): \Doctrine\ORM\Query {
         $qb = $manager->createQueryBuilder();
         $qb->select('e')
             ->from($entityClass, 'e');
 
+        $this->applyCriteria($qb, $criteria);
+        $this->applyOrderBy($qb, $orderBy);
+        $this->applyPagination($qb, $limit, $offset);
+
+        return $qb->getQuery();
+    }
+
+    /**
+     * @param array<string, mixed> $criteria
+     */
+    private function applyCriteria(\Doctrine\ORM\QueryBuilder $qb, array $criteria): void
+    {
         foreach ($criteria as $field => $value) {
             if (null === $value) {
                 $qb->andWhere($qb->expr()->isNull('e.' . $field));
@@ -133,26 +178,26 @@ class DoctrineExporter implements DoctrineExporterInterface
                     ->setParameter($paramName, $value);
             }
         }
+    }
 
+    /**
+     * @param array<string, string> $orderBy
+     */
+    private function applyOrderBy(\Doctrine\ORM\QueryBuilder $qb, array $orderBy): void
+    {
         foreach ($orderBy as $field => $direction) {
             $qb->addOrderBy('e.' . $field, $direction);
         }
+    }
 
+    private function applyPagination(\Doctrine\ORM\QueryBuilder $qb, ?int $limit, ?int $offset): void
+    {
         if (null !== $limit) {
             $qb->setMaxResults($limit);
         }
 
         if (null !== $offset) {
             $qb->setFirstResult($offset);
-        }
-
-        $query = $qb->getQuery();
-        $iterator = $query->toIterable();
-
-        /** @var object $entity */
-        foreach ($iterator as $entity) {
-            yield [$entity, $metadata];
-            $manager->detach($entity);
         }
     }
 
@@ -164,117 +209,11 @@ class DoctrineExporter implements DoctrineExporterInterface
      */
     private function selectFields(array $requestedFields, ClassMetadata $metadata): array
     {
-        $allFields = $metadata->getFieldNames();
-
-        // If no fields requested, return all
         if (empty($requestedFields)) {
-            return $allFields;
-        }
-
-        // Validate that all requested fields exist
-        foreach ($requestedFields as $field) {
-            if (!$metadata->hasField($field) && !$metadata->hasAssociation($field)) {
-                throw new InvalidCriteriaException(
-                    \sprintf(
-                        'Field "%s" does not exist in entity "%s". Available fields: %s',
-                        $field,
-                        $metadata->getName(),
-                        implode(', ', array_merge($metadata->getFieldNames(), $metadata->getAssociationNames()))
-                    )
-                );
-            }
+            return $metadata->getFieldNames();
         }
 
         return $requestedFields;
-    }
-
-    /**
-     * @param array<int, string>    $fields
-     * @param ClassMetadata<object> $metadata
-     * @param array<string, mixed>  $options
-     *
-     * @return array<string, mixed>
-     */
-    private function extractEntityData(object $entity, array $fields, ClassMetadata $metadata, array $options): array
-    {
-        $data = [];
-        foreach ($fields as $field) {
-            $value = $this->propertyAccessor->getValue($entity, $field);
-
-            if ($metadata->hasAssociation($field)) {
-                $value = $this->extractAssociationIdentifiers($value);
-            } else {
-                $value = $this->valueNormalizer->normalize($value, $options);
-            }
-
-            $data[$field] = $value;
-        }
-
-        return $data;
-    }
-
-    /**
-     * @return int|string|array<int, int|string>|null
-     */
-    private function extractAssociationIdentifiers(mixed $value): int|string|array|null
-    {
-        if (null === $value) {
-            return null;
-        }
-
-        if ($value instanceof Collection) {
-            $identifiers = [];
-            foreach ($value as $item) {
-                if (is_object($item)) {
-                    $relatedMetadata = $this->getMetadataForObject($item);
-                    $identifierValues = $relatedMetadata->getIdentifierValues($item);
-                    $identifier = $this->getSingleIdentifierValue($identifierValues);
-                    if (null !== $identifier) {
-                        $identifiers[] = $identifier;
-                    }
-                }
-            }
-
-            return $identifiers;
-        }
-
-        if (is_object($value)) {
-            $relatedMetadata = $this->getMetadataForObject($value);
-            $identifierValues = $relatedMetadata->getIdentifierValues($value);
-
-            return $this->getSingleIdentifierValue($identifierValues);
-        }
-
-        return null;
-    }
-
-    /**
-     * @return ClassMetadata<object>
-     */
-    private function getMetadataForObject(object $entity): ClassMetadata
-    {
-        $manager = $this->managerRegistry->getManagerForClass($entity::class);
-        if (null === $manager) {
-            throw new EntityNotFoundException(
-                \sprintf('No manager found for entity "%s"', $entity::class)
-            );
-        }
-
-        return $manager->getClassMetadata($entity::class);
-    }
-
-    /**
-     * @param array<string, mixed> $identifierValues
-     */
-    private function getSingleIdentifierValue(array $identifierValues): int|string|null
-    {
-        if (empty($identifierValues)) {
-            return null;
-        }
-
-        $value = reset($identifierValues);
-
-        return is_scalar($value) ? (is_int($value) ? $value : (string) $value) : null;
     }
 
     /**
