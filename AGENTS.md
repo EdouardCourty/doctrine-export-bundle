@@ -10,11 +10,18 @@
 
 ## Tech Stack
 - PHP 8.3+ (enums, typed properties, named arguments)
-- Symfony 7.0|8.0 (Framework Bundle, Property Accessor)
+- Symfony Components:
+  - http-kernel (Bundle base class)
+  - dependency-injection (DI container)
+  - config (Configuration loading)
+  - property-access (Entity property extraction)
+- PSR-14 (psr/event-dispatcher) for event system
 - Doctrine ORM 3.0|4.0
 - PHPUnit 12+ for testing
 - PHPStan Level 9 for static analysis
 - PHP-CS-Fixer for code style
+
+**Note**: This bundle does NOT require `symfony/framework-bundle` - only minimal Symfony components needed for bundle functionality. Events are plain PHP objects following PSR-14, not Symfony-specific event classes.
 
 ## Architecture & Patterns
 
@@ -41,6 +48,7 @@ src/
 - **DoctrineExporter**: Main service implementing `DoctrineExporterInterface`
 - **ExportFormat enum**: Type-safe format specification with `getMimeType()` and `getExtension()`
 - **ExportStrategyRegistry**: Auto-discovers strategies via Symfony autoconfiguration
+- **Events**: `PreExportEvent` and `PostExportEvent` for monitoring and logging exports
 
 ## Development Guidelines
 
@@ -88,6 +96,25 @@ composer test        # Run PHPUnit tests
 - Check file write permissions
 - Provide clear error messages with context
 
+### Events System
+The bundle dispatches two events during export operations:
+
+#### PreExportEvent
+- Dispatched **before** the export starts
+- Contains: entity class, format, criteria, limit, offset, orderBy, fields, options
+- Use case: Logging, validation, or modifying export parameters via listeners
+
+#### PostExportEvent
+- Dispatched **after** the export completes
+- Contains: all PreExportEvent data + `exportedCount` (int) + `durationInSeconds` (float)
+- Duration measured with microsecond precision using `microtime(true)`
+- Use case: Logging performance, monitoring, sending notifications, tracking metrics
+
+**Implementation Notes**:
+- Events are only dispatched if `EventDispatcherInterface` is available
+- Duration includes the entire export process from start to finish
+- No event dispatching overhead when EventDispatcher is not injected
+
 ## Common Tasks
 
 ### Running Tests
@@ -119,6 +146,6 @@ vendor/bin/phpunit --filter=Csv  # Specific test
 - **Defensive coding**: Validate inputs, throw meaningful exceptions, assume the host application has complex state
 
 ## References
-- Usage examples: `README.md`
+- **Quick start & usage examples**: See [@README.md](./README.md)
 - Symfony DI: https://symfony.com/doc/current/service_container.html
 - Doctrine metadata: https://www.doctrine-project.org/projects/doctrine-orm/en/latest/reference/metadata-drivers.html

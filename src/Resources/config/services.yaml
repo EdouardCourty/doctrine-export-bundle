@@ -27,6 +27,7 @@ services:
         arguments:
             $managerRegistry: '@doctrine'
             $processorChain: '@Ecourty\DoctrineExportBundle\Service\EntityProcessorChain'
+            $eventDispatcher: '@?Psr\EventDispatcher\EventDispatcherInterface'
 
     Ecourty\DoctrineExportBundle\Contract\DoctrineExporterInterface:
         alias: Ecourty\DoctrineExportBundle\Service\DoctrineExporter
