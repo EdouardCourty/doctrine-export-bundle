@@ -21,6 +21,7 @@ use Ecourty\DoctrineExportBundle\Strategy\XmlExportStrategy;
 use Ecourty\DoctrineExportBundle\Tests\App\TestKernel;
 use Ecourty\DoctrineExportBundle\Tests\Fixtures\Entity\User;
 use Ecourty\DoctrineExportBundle\Tests\Support\TestDataLoader;
+use Psr\EventDispatcher\EventDispatcherInterface;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Component\PropertyAccess\PropertyAccessorInterface;
 
@@ -109,7 +110,9 @@ class RealisticBenchmarkTest extends KernelTestCase
             $valueNormalizer = new ValueNormalizer($optionsResolver);
             $defaultProcessor = new DefaultEntityProcessor($propertyAccessor, $valueNormalizer, $managerRegistry);
             $processorChain = new EntityProcessorChain($defaultProcessor, $optionsResolver);
-            $exporter = new DoctrineExporter($managerRegistry, $registry, $processorChain);
+            /** @var EventDispatcherInterface $eventDispatcher */
+            $eventDispatcher = self::getContainer()->get(EventDispatcherInterface::class);
+            $exporter = new DoctrineExporter($managerRegistry, $registry, $processorChain, $eventDispatcher);
 
             $filePath = sys_get_temp_dir() . '/realistic_' . $format->value . '_' . uniqid() . '.' . $format->getExtension();
 
