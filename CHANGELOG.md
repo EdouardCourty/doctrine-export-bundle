@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2025-12-14
+
+### Added
+- **Event system**: `PreExportEvent` and `PostExportEvent` for monitoring exports
+  - `PostExportEvent::getDurationInSeconds()` provides microsecond-precision performance metrics
+  - Events are optional and only dispatched when PSR-14 EventDispatcher is available
+  - Perfect for logging, monitoring, and performance tracking
+
 ## [1.1.0] - 2025-12-12
 
 ### Added

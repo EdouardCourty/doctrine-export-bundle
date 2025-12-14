@@ -17,6 +17,7 @@ use Ecourty\DoctrineExportBundle\Service\ExportStrategyRegistry;
 use Ecourty\DoctrineExportBundle\Service\ValueNormalizer;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
+use Psr\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\PropertyAccess\PropertyAccessor;
 
 class DoctrineExporterTest extends TestCase
@@ -35,11 +36,13 @@ class DoctrineExporterTest extends TestCase
         $valueNormalizer = new ValueNormalizer($optionsResolver);
         $defaultProcessor = new DefaultEntityProcessor($propertyAccessor, $valueNormalizer, $this->managerRegistry);
         $processorChain = new EntityProcessorChain($defaultProcessor, $optionsResolver);
+        $eventDispatcher = $this->createMock(EventDispatcherInterface::class);
 
         $this->exporter = new DoctrineExporter(
             $this->managerRegistry,
             $this->strategyRegistry,
-            $processorChain
+            $processorChain,
+            $eventDispatcher
         );
     }
 

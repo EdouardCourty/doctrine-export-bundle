@@ -22,6 +22,7 @@ A flexible and extensible Symfony bundle for exporting Doctrine entities to vari
   - [Field Validation](#field-validation)
   - [Memory Management](#memory-management)
   - [Association Handling](#association-handling)
+  - [Events](#events)
 - [Supported Formats](#supported-formats)
 - [Development](#development)
 - [Requirements](#requirements)
@@ -154,6 +155,68 @@ public function export(DoctrineExporterInterface $exporter): StreamedResponse
     );
 }
 ```
+
+### Events
+
+The bundle dispatches events before and after each export, allowing you to hook into the export lifecycle for logging, monitoring, or custom logic.
+
+**Events are optional** - if no event dispatcher is configured, exports work normally without events.
+
+The bundle uses the **PSR-14 EventDispatcherInterface** (`Psr\EventDispatcher\EventDispatcherInterface`), making it compatible with any PSR-14 compliant event dispatcher, not just Symfony's.
+
+#### Available Events
+
+- **`PreExportEvent`** - Dispatched before export begins
+- **`PostExportEvent`** - Dispatched after export completes (includes count and duration)
+
+#### Example: Logging Exports
+
+```php
+use Ecourty\DoctrineExportBundle\Event\PostExportEvent;
+use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
+
+#[AsEventListener]
+public function onPostExport(PostExportEvent $event): void
+{
+    $this->logger->info('Export completed', [
+        'entity' => $event->getEntityClass(),
+        'count' => $event->getExportedCount(),
+    ]);
+}
+```
+
+#### Example: Performance Monitoring
+
+```php
+use Ecourty\DoctrineExportBundle\Event\PostExportEvent;
+
+#[AsEventListener]
+public function onPostExport(PostExportEvent $event): void
+{
+    $duration = $event->getDurationInSeconds();
+    $throughput = $event->getExportedCount() / $duration;
+    
+    $this->metrics->gauge('export.duration', $duration);
+    $this->metrics->gauge('export.throughput', $throughput);
+}
+```
+
+#### Event Properties
+
+**PreExportEvent:**
+- `getEntityClass()` - Entity class being exported
+- `getFormat()` - Export format (CSV, JSON, XML)
+- `getCriteria()` - Filter criteria
+- `getLimit()` - Result limit
+- `getOffset()` - Result offset
+- `getOrderBy()` - Sort order
+- `getFields()` - Selected fields
+- `getOptions()` - Export options
+
+**PostExportEvent:**
+- All PreExportEvent properties
+- `getExportedCount()` - Number of entities exported
+- `getDurationInSeconds()` - Export duration measured with microsecond precision (float)
 
 ## Supported Formats
 

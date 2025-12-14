@@ -9,9 +9,12 @@ use Doctrine\Persistence\ManagerRegistry;
 use Doctrine\Persistence\Mapping\ClassMetadata;
 use Ecourty\DoctrineExportBundle\Contract\DoctrineExporterInterface;
 use Ecourty\DoctrineExportBundle\Enum\ExportFormat;
+use Ecourty\DoctrineExportBundle\Event\PostExportEvent;
+use Ecourty\DoctrineExportBundle\Event\PreExportEvent;
 use Ecourty\DoctrineExportBundle\Exception\EntityNotFoundException;
 use Ecourty\DoctrineExportBundle\Exception\FileWriteException;
 use Ecourty\DoctrineExportBundle\Exception\InvalidCriteriaException;
+use Psr\EventDispatcher\EventDispatcherInterface;
 
 class DoctrineExporter implements DoctrineExporterInterface
 {
@@ -19,6 +22,7 @@ class DoctrineExporter implements DoctrineExporterInterface
         private readonly ManagerRegistry $managerRegistry,
         private readonly ExportStrategyRegistry $strategyRegistry,
         private readonly EntityProcessorChain $processorChain,
+        private readonly ?EventDispatcherInterface $eventDispatcher = null,
     ) {
     }
 
@@ -62,9 +66,25 @@ class DoctrineExporter implements DoctrineExporterInterface
         array $options = [],
         array $processors = [],
     ): \Generator {
+        $startTime = microtime(true);
+
+        if (null !== $this->eventDispatcher) {
+            $this->eventDispatcher->dispatch(new PreExportEvent(
+                $entityClass,
+                $format,
+                $criteria,
+                $limit,
+                $offset,
+                $orderBy,
+                $fields,
+                $options
+            ));
+        }
+
         $strategy = $this->strategyRegistry->getStrategy($format);
 
         $selectedFields = null;
+        $exportedCount = 0;
 
         foreach ($this->iterateEntities($entityClass, $criteria, $limit, $offset, $orderBy) as [$entity, $entityMetadata]) {
             if (null === $selectedFields) {
@@ -78,12 +98,29 @@ class DoctrineExporter implements DoctrineExporterInterface
 
             $data = $this->processorChain->process($entity, $selectedFields, $options, $processors);
             yield $strategy->formatRow($data);
+            ++$exportedCount;
             unset($data, $entity);
         }
 
         $footer = $strategy->generateFooter();
         if (null !== $footer) {
             yield $footer;
+        }
+
+        if (null !== $this->eventDispatcher) {
+            $durationInSeconds = microtime(true) - $startTime;
+            $this->eventDispatcher->dispatch(new PostExportEvent(
+                $entityClass,
+                $format,
+                $criteria,
+                $limit,
+                $offset,
+                $orderBy,
+                $fields,
+                $options,
+                $exportedCount,
+                $durationInSeconds
+            ));
         }
     }
 
