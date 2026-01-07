@@ -24,6 +24,7 @@ return (new PhpCsFixer\Config())
         'phpdoc_order' => true,
         'no_superfluous_phpdoc_tags' => true,
         'yoda_style' => false,
+        'fully_qualified_strict_types' => true,
     ])
     ->setRiskyAllowed(true)
     ->setFinder($finder)

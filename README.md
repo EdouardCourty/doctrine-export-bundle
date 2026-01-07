@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/EdouardCourty/doctrine-export-bundle/actions/workflows/ci.yml/badge.svg)](https://github.com/EdouardCourty/doctrine-export-bundle/actions/workflows/ci.yml)
 
-A flexible and extensible Symfony bundle for exporting Doctrine entities to various formats (CSV, JSON, XML).
+A flexible and extensible Symfony bundle for exporting Doctrine entities to various formats (CSV, JSON, XML, Google Sheets).
 
 **Compatible with PHP 8.3+, Symfony 7.x/8.x, and Doctrine ORM 3.x/4.x** 🎉
 
@@ -24,6 +24,7 @@ A flexible and extensible Symfony bundle for exporting Doctrine entities to vari
   - [Association Handling](#association-handling)
   - [Events](#events)
 - [Supported Formats](#supported-formats)
+- [Google Sheets Export (Optional)](#google-sheets-export-optional)
 - [Development](#development)
 - [Requirements](#requirements)
 - [License](#license)
@@ -79,6 +80,7 @@ That's it! 🚀
 - **🎯 Field Selection** - Export only the fields you need
 - **🔍 Advanced Filtering** - Filter by criteria, pagination, ordering
 - **📦 Multiple Formats** - CSV, JSON, XML out of the box
+- **☁️ Google Sheets Export** - Direct export to Google Sheets with auto-sharing (optional)
 - **💾 Memory Efficient** - Streaming support via generators (< 5 MB for 100k entities)
 - **⚡ High Performance** - 42,000 entities/second (JSON), linear O(n) scaling
 - **🔌 Extensible** - Add custom formats with the Strategy pattern
@@ -220,11 +222,12 @@ public function onPostExport(PostExportEvent $event): void
 
 ## Supported Formats
 
-| Format | Extension | Description                     | Use Case                  |
-|--------|-----------|---------------------------------|---------------------------|
-| CSV    | `.csv`    | Comma-separated values          | Spreadsheets, Excel       |
-| JSON   | `.json`   | JSON format                     | APIs                      |
-| XML    | `.xml`    | XML with configurable structure | Legacy enterprise systems |
+| Format        | Extension | Description                      | Use Case                  |
+|---------------|-----------|----------------------------------|---------------------------|
+| CSV           | `.csv`    | Comma-separated values           | Spreadsheets, Excel       |
+| JSON          | `.json`   | JSON format                      | APIs                      |
+| XML           | `.xml`    | XML with configurable structure  | Legacy enterprise systems |
+| Google Sheets | -         | Export directly to Google Sheets | Cloud-based collaboration |
 
 ### Format Examples
 
@@ -238,6 +241,155 @@ $exporter->exportToFile(User::class, ExportFormat::JSON, '/tmp/users.json');
 // XML
 $exporter->exportToFile(User::class, ExportFormat::XML, '/tmp/users.xml');
 ```
+
+### Export Output Examples
+
+Here's what the exported data looks like for each format (using a sample `User` entity):
+
+#### CSV Format
+
+```csv
+id,email,firstName,lastName,isActive,age,createdAt
+1,john.doe@example.com,John,Doe,1,32,2024-01-15T10:30:00+00:00
+2,jane.smith@example.com,Jane,Smith,1,28,2024-01-16T14:22:00+00:00
+3,bob.johnson@example.com,Bob,Johnson,0,45,2024-01-17T09:15:00+00:00
+```
+
+#### JSON Format
+
+```json
+[
+  {"id":1,"email":"john.doe@example.com","firstName":"John","lastName":"Doe","isActive":1,"age":32,"createdAt":"2024-01-15T10:30:00+00:00"},
+  {"id":2,"email":"jane.smith@example.com","firstName":"Jane","lastName":"Smith","isActive":1,"age":28,"createdAt":"2024-01-16T14:22:00+00:00"},
+  {"id":3,"email":"bob.johnson@example.com","firstName":"Bob","lastName":"Johnson","isActive":0,"age":45,"createdAt":"2024-01-17T09:15:00+00:00"}
+]
+```
+
+#### XML Format
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<data>
+  <item><id>1</id><email>john.doe@example.com</email><firstName>John</firstName><lastName>Doe</lastName><isActive>1</isActive><age>32</age><createdAt>2024-01-15T10:30:00+00:00</createdAt></item>
+  <item><id>2</id><email>jane.smith@example.com</email><firstName>Jane</firstName><lastName>Smith</lastName><isActive>1</isActive><age>28</age><createdAt>2024-01-16T14:22:00+00:00</createdAt></item>
+  <item><id>3</id><email>bob.johnson@example.com</email><firstName>Bob</firstName><lastName>Johnson</lastName><isActive>0</isActive><age>45</age><createdAt>2024-01-17T09:15:00+00:00</createdAt></item>
+</data>
+```
+
+## Google Sheets Export (Optional)
+
+Export directly to Google Sheets with automatic spreadsheet creation and sharing.
+
+### Installation
+
+The `google/apiclient` package is required for Google Sheets integration:
+```bash
+composer require google/apiclient
+```
+
+### Configuration
+
+**1. Create a Google Service Account (Google Workspace Only)**
+
+⚠️ **Important**: Google Sheets export **only works with Google Workspace accounts** that have domain-wide delegation enabled. Service accounts **cannot** create files in personal Google Drive accounts.
+
+1. Go to [Google Cloud Console](https://console.cloud.google.com/)
+2. Create a new project or select an existing one
+3. Enable the **Google Sheets API** and **Google Drive API**
+4. Create a **Service Account** with **domain-wide delegation** and download the JSON credentials file
+5. In your Google Workspace Admin console, grant the service account domain-wide delegation with the following scopes:
+   - `https://www.googleapis.com/auth/spreadsheets`
+   - `https://www.googleapis.com/auth/drive.file`
+6. Save the credentials file to your project (e.g., `config/google-credentials.json`)
+
+**2. Configure the Bundle**
+
+You can provide credentials in two ways:
+
+**Option 1: File path** (recommended for local development):
+```yaml
+# config/packages/doctrine_export.yaml
+doctrine_export:
+  google_sheets:
+    credentials_path: '%kernel.project_dir%/config/google-credentials.json'
+    batch_size: 10000  # Optional: rows per batch (default: 10000)
+```
+
+**Option 2: JSON string** (recommended for production with secret managers):
+```yaml
+# config/packages/doctrine_export.yaml
+doctrine_export:
+  google_sheets:
+    credentials_path: '%env(GOOGLE_SERVICE_ACCOUNT_JSON)%'
+    batch_size: 10000  # Optional: rows per batch (default: 10000)
+```
+
+The bundle automatically detects whether `credentials_path` is a file path or a JSON string. This is useful when using secret managers (AWS Secrets Manager, Google Secret Manager, Vault, etc.) that store credentials as JSON strings instead of files.
+
+### Usage
+
+**⚠️ Important**: Service account with domain-wide delegation requires a **subject email** to impersonate. You must provide `OPTION_GOOGLE_SHEETS_SUBJECT_EMAIL` in all exports.
+
+**Basic Export with Custom Title**:
+```php
+use Ecourty\DoctrineExportBundle\Contract\DoctrineExporterInterface;
+use Ecourty\DoctrineExportBundle\Enum\ExportFormat;
+
+$result = $exporter->exportToApi(
+    entityClass: User::class,
+    format: ExportFormat::GOOGLE_SHEETS,
+    options: [
+        DoctrineExporterInterface::OPTION_GOOGLE_SHEETS_SUBJECT_EMAIL => 'user@yourdomain.com', // REQUIRED
+        DoctrineExporterInterface::OPTION_SPREADSHEET_TITLE => 'User Export 2024',
+    ]
+);
+
+// Access export results
+echo $result->url;                  // Spreadsheet URL
+echo $result->exportedCount;        // Number of entities exported
+echo $result->durationInSeconds;    // Export duration
+```
+
+**Export with Email Sharing**:
+```php
+// Automatically share the spreadsheet with an email address
+$result = $exporter->exportToApi(
+    entityClass: User::class,
+    format: ExportFormat::GOOGLE_SHEETS,
+    options: [
+        DoctrineExporterInterface::OPTION_GOOGLE_SHEETS_SUBJECT_EMAIL => 'user@yourdomain.com', // REQUIRED
+        DoctrineExporterInterface::OPTION_SPREADSHEET_TITLE => 'User Export 2024',
+        DoctrineExporterInterface::OPTION_GOOGLE_SHEETS_SHARE_EMAIL => 'manager@company.com',
+    ]
+);
+
+echo "Exported {$result->exportedCount} users to: {$result->url}";
+echo "Shared with: manager@company.com";
+```
+
+**Export with Auto-Generated Title**:
+```php
+// If no title provided, uses: "Export YYYY-MM-DD HH:MM:SS"
+$result = $exporter->exportToApi(
+    entityClass: Order::class,
+    format: ExportFormat::GOOGLE_SHEETS,
+    options: [
+        DoctrineExporterInterface::OPTION_GOOGLE_SHEETS_SUBJECT_EMAIL => 'user@yourdomain.com', // REQUIRED
+    ],
+    criteria: ['status' => 'completed'],
+    limit: 1000
+);
+
+echo "Exported {$result->exportedCount} orders to: {$result->url}";
+```
+
+### Important Notes
+
+- **Subject email is REQUIRED** - You must provide `OPTION_GOOGLE_SHEETS_SUBJECT_EMAIL` for service account domain-wide delegation
+- **Use `exportToApi()` method** - Google Sheets export requires the `exportToApi()` method, **NOT** `exportToFile()`
+- **Automatic spreadsheet creation** - A new spreadsheet is created for each export using the email provided in `OPTION_GOOGLE_SHEETS_SUBJECT_EMAIL`
+- **Email sharing** - Use `OPTION_GOOGLE_SHEETS_SHARE_EMAIL` to automatically share with specific users (writer permission)
+- **Batch writing** - Large exports are written in configurable batches (default: 10,000 rows)
 
 ## Advanced Options
 

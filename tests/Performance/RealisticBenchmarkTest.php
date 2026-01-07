@@ -32,10 +32,10 @@ use Symfony\Component\PropertyAccess\PropertyAccessorInterface;
  */
 class RealisticBenchmarkTest extends KernelTestCase
 {
-    private const ENTITY_COUNT = 10_000;
-    private const ITERATIONS = 3;
-    private const MEMORY_LIMIT_MB = 1.0;
-    private const TIME_LIMIT_SECONDS = 1.0;
+    private const int ENTITY_COUNT = 10_000;
+    private const int ITERATIONS = 3;
+    private const float MEMORY_LIMIT_MB = 1.0;
+    private const float TIME_LIMIT_SECONDS = 1.0;
 
     private EntityManagerInterface $entityManager;
     private TestDataLoader $dataLoader;
