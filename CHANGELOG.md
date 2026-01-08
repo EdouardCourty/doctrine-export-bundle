@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- **Google Sheets export support**: Export entities directly to Google Sheets via optional `google/apiclient` dependency
+  - New `exportToApi()` method for API-based exports with clean `ExportResult` return type
+  - `ExportResult` class to hold export metadata (URL, count, duration)
+  - Extended `ExportStrategyInterface` with lifecycle methods: `prepare()`, `finalize()`, `supportsFileExport()`
+  - New `OPTION_SPREADSHEET_TITLE` constant for custom spreadsheet naming
+  - New `OPTION_GOOGLE_SHEETS_SHARE_EMAIL` constant for dynamic email sharing per export
+  - Bundle configuration for Google Sheets credentials and batch size
+  - Batch writing with configurable batch size (default 10,000 rows)
+  - New exceptions: `GoogleSheetsException` and `UnsupportedOperationException`
+
+### Changed
+- **[BREAKING]** Removed `admin_email` and `required_email_domain` from bundle configuration
+- Google Sheets email sharing is now dynamic via `OPTION_GOOGLE_SHEETS_SHARE_EMAIL` option instead of hardcoded config
+- Removed unused email domain validation logic
+
+### Removed
+- **[BREAKING]** `GOOGLE_APPLICATION_CREDENTIALS` environment variable is no longer supported (use `credentials_path` config instead)
+
 ## [1.2.0] - 2025-12-14
 
 ### Added

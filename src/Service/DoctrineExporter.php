@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Ecourty\DoctrineExportBundle\Service;
 
 use Doctrine\ORM\EntityManagerInterface;
+use Doctrine\ORM\QueryBuilder;
 use Doctrine\Persistence\ManagerRegistry;
 use Doctrine\Persistence\Mapping\ClassMetadata;
 use Ecourty\DoctrineExportBundle\Contract\DoctrineExporterInterface;
@@ -14,6 +15,8 @@ use Ecourty\DoctrineExportBundle\Event\PreExportEvent;
 use Ecourty\DoctrineExportBundle\Exception\EntityNotFoundException;
 use Ecourty\DoctrineExportBundle\Exception\FileWriteException;
 use Ecourty\DoctrineExportBundle\Exception\InvalidCriteriaException;
+use Ecourty\DoctrineExportBundle\Exception\UnsupportedOperationException;
+use Ecourty\DoctrineExportBundle\Model\APIExportResult;
 use Psr\EventDispatcher\EventDispatcherInterface;
 
 class DoctrineExporter implements DoctrineExporterInterface
@@ -38,6 +41,13 @@ class DoctrineExporter implements DoctrineExporterInterface
         array $options = [],
         array $processors = [],
     ): void {
+        $strategy = $this->strategyRegistry->getStrategy($format);
+
+        // Check if strategy supports file export BEFORE opening file
+        if (!$strategy->supportsFileExport()) {
+            throw UnsupportedOperationException::fileExportNotSupported($format->value);
+        }
+
         $handle = @fopen($filePath, 'w');
         if (false === $handle) {
             throw new FileWriteException(\sprintf('Cannot open file "%s" for writing', $filePath));
@@ -124,6 +134,98 @@ class DoctrineExporter implements DoctrineExporterInterface
         }
     }
 
+    public function exportToApi(
+        string $entityClass,
+        ExportFormat $format,
+        array $criteria = [],
+        ?int $limit = null,
+        ?int $offset = null,
+        array $orderBy = [],
+        array $fields = [],
+        array $options = [],
+        array $processors = [],
+    ): APIExportResult {
+        $startTime = microtime(true);
+
+        // Dispatch PreExportEvent
+        if (null !== $this->eventDispatcher) {
+            $this->eventDispatcher->dispatch(new PreExportEvent(
+                $entityClass,
+                $format,
+                $criteria,
+                $limit,
+                $offset,
+                $orderBy,
+                $fields,
+                $options
+            ));
+        }
+
+        $strategy = $this->strategyRegistry->getStrategy($format);
+
+        // Validate strategy supports API export (doesn't support file export)
+        if ($strategy->supportsFileExport()) {
+            throw new \InvalidArgumentException(
+                \sprintf('Format "%s" is not an API-based export. Use exportToFile() or exportToGenerator().', $format->value)
+            );
+        }
+
+        // Get entity metadata and select fields
+        $manager = $this->getEntityManager($entityClass);
+        $metadata = $manager->getClassMetadata($entityClass);
+        $selectedFields = $this->selectFields($fields, $metadata);
+
+        // Call prepare() lifecycle method
+        $strategy->prepare($selectedFields, $options);
+
+        $exportedCount = 0;
+
+        // Iterate and process entities
+        foreach ($this->iterateEntities($entityClass, $criteria, $limit, $offset, $orderBy) as [$entity, $_]) {
+            $data = $this->processorChain->process($entity, $selectedFields, $options, $processors);
+            $strategy->formatRow($data); // Buffers internally
+            ++$exportedCount;
+            unset($data, $entity);
+        }
+
+        // Finalize export
+        $strategy->finalize();
+
+        // Get export URL
+        $exportUrl = $strategy->getExportUrl();
+        if (null === $exportUrl) {
+            throw new \RuntimeException(
+                \sprintf('Strategy "%s" did not return export URL.', $format->value)
+            );
+        }
+
+        $durationInSeconds = microtime(true) - $startTime;
+
+        // Dispatch PostExportEvent
+        if (null !== $this->eventDispatcher) {
+            $this->eventDispatcher->dispatch(new PostExportEvent(
+                $entityClass,
+                $format,
+                $criteria,
+                $limit,
+                $offset,
+                $orderBy,
+                $fields,
+                $options,
+                $exportedCount,
+                $durationInSeconds
+            ));
+        }
+
+        return new APIExportResult(
+            url: $exportUrl,
+            exportedCount: $exportedCount,
+            durationInSeconds: $durationInSeconds,
+            format: $format,
+            entityClass: $entityClass
+        );
+    }
+
     /**
      * @param class-string          $entityClass
      * @param array<string, mixed>  $criteria
@@ -204,7 +306,7 @@ class DoctrineExporter implements DoctrineExporterInterface
     /**
      * @param array<string, mixed> $criteria
      */
-    private function applyCriteria(\Doctrine\ORM\QueryBuilder $qb, array $criteria): void
+    private function applyCriteria(QueryBuilder $qb, array $criteria): void
     {
         foreach ($criteria as $field => $value) {
             if (null === $value) {
@@ -220,14 +322,14 @@ class DoctrineExporter implements DoctrineExporterInterface
     /**
      * @param array<string, string> $orderBy
      */
-    private function applyOrderBy(\Doctrine\ORM\QueryBuilder $qb, array $orderBy): void
+    private function applyOrderBy(QueryBuilder $qb, array $orderBy): void
     {
         foreach ($orderBy as $field => $direction) {
             $qb->addOrderBy('e.' . $field, $direction);
         }
     }
 
-    private function applyPagination(\Doctrine\ORM\QueryBuilder $qb, ?int $limit, ?int $offset): void
+    private function applyPagination(QueryBuilder $qb, ?int $limit, ?int $offset): void
     {
         if (null !== $limit) {
             $qb->setMaxResults($limit);

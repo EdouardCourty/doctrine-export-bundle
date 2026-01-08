@@ -5,7 +5,7 @@ services:
 
     Ecourty\DoctrineExportBundle\:
         resource: '../../'
-        exclude: '../../{DependencyInjection,Enum,Exception,Resources,Contract}'
+        exclude: '../../{DependencyInjection,Enum,Exception,Resources,Contract,Strategy/GoogleSheetsExportStrategy.php}'
 
     Ecourty\DoctrineExportBundle\Service\ExportStrategyRegistry:
         arguments:

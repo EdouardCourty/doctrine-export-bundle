@@ -19,10 +19,10 @@ use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
  */
 class LargeDatasetExportTest extends KernelTestCase
 {
-    private const ENTITY_COUNT = 10_000;
-    private const MEMORY_LIMIT_CSV_MB = 2.5;
-    private const MEMORY_LIMIT_JSON_XML_MB = 1.0;
-    private const TIME_LIMIT_SECONDS = 1.0;
+    private const int ENTITY_COUNT = 10_000;
+    private const float MEMORY_LIMIT_CSV_MB = 2.5;
+    private const float MEMORY_LIMIT_JSON_XML_MB = 1.0;
+    private const float TIME_LIMIT_SECONDS = 1.0;
 
     private EntityManagerInterface $entityManager;
     private DoctrineExporterInterface $exporter;

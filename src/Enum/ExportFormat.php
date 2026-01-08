@@ -9,6 +9,7 @@ enum ExportFormat: string
     case CSV = 'csv';
     case JSON = 'json';
     case XML = 'xml';
+    case GOOGLE_SHEETS = 'google_sheets';
 
     public function getExtension(): string
     {
@@ -16,6 +17,7 @@ enum ExportFormat: string
             self::CSV => 'csv',
             self::JSON => 'json',
             self::XML => 'xml',
+            self::GOOGLE_SHEETS => 'gsheet',
         };
     }
 
@@ -25,6 +27,7 @@ enum ExportFormat: string
             self::CSV => 'text/csv',
             self::JSON => 'application/json',
             self::XML => 'application/xml',
+            self::GOOGLE_SHEETS => 'application/vnd.google-apps.spreadsheet',
         };
     }
 

@@ -55,4 +55,22 @@ class JsonExportStrategy implements ExportStrategyInterface
     {
         return \PHP_EOL . ']' . \PHP_EOL;
     }
+
+    public function prepare(array $fields, array $options): void
+    {
+    }
+
+    public function finalize(): void
+    {
+    }
+
+    public function getExportUrl(): ?string
+    {
+        return null;
+    }
+
+    public function supportsFileExport(): bool
+    {
+        return true;
+    }
 }
