@@ -8,6 +8,7 @@ use Ecourty\DoctrineExportBundle\Enum\ExportFormat;
 use Ecourty\DoctrineExportBundle\Tests\Fixtures\Entity\Article;
 use Ecourty\DoctrineExportBundle\Tests\Fixtures\Entity\Tag;
 use Ecourty\DoctrineExportBundle\Tests\Fixtures\Entity\User;
+use Ecourty\DoctrineExportBundle\Tests\Fixtures\Enum\UserStatus;
 
 class AssociationExportTest extends IntegrationTestCase
 {
@@ -33,7 +34,8 @@ class AssociationExportTest extends IntegrationTestCase
             city: 'Paris',
             country: 'France',
             zipCode: '75001',
-            loginCount: 5
+            loginCount: 5,
+            status: UserStatus::ACTIVE
         );
         $em->persist($user);
 
@@ -82,7 +84,8 @@ class AssociationExportTest extends IntegrationTestCase
             city: 'Paris',
             country: 'France',
             zipCode: '75001',
-            loginCount: 5
+            loginCount: 5,
+            status: UserStatus::ACTIVE
         );
         $em->persist($user);
 
@@ -149,7 +152,8 @@ class AssociationExportTest extends IntegrationTestCase
             city: 'Paris',
             country: 'France',
             zipCode: '75001',
-            loginCount: 5
+            loginCount: 5,
+            status: UserStatus::ACTIVE
         );
         $em->persist($user);
 
@@ -195,7 +199,8 @@ class AssociationExportTest extends IntegrationTestCase
             city: 'Paris',
             country: 'France',
             zipCode: '75001',
-            loginCount: 5
+            loginCount: 5,
+            status: UserStatus::ACTIVE
         );
         $em->persist($user);
 
