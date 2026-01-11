@@ -6,6 +6,7 @@ namespace Ecourty\DoctrineExportBundle\Tests\Fixtures\Entity;
 
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
+use Ecourty\DoctrineExportBundle\Tests\Fixtures\Enum\UserStatus;
 
 #[ORM\Entity]
 #[ORM\Table(name: 'users')]
@@ -58,6 +59,9 @@ class User
     #[ORM\Column(type: Types::INTEGER)]
     private int $loginCount;
 
+    #[ORM\Column(type: Types::STRING, enumType: UserStatus::class)]
+    private UserStatus $status;
+
     public function __construct(
         string $email,
         string $firstName,
@@ -71,6 +75,7 @@ class User
         string $country,
         string $zipCode,
         int $loginCount,
+        UserStatus $status = UserStatus::ACTIVE,
         ?string $bio = null,
         ?\DateTimeInterface $lastLoginAt = null,
     ) {
@@ -86,6 +91,7 @@ class User
         $this->country = $country;
         $this->zipCode = $zipCode;
         $this->loginCount = $loginCount;
+        $this->status = $status;
         $this->bio = $bio;
         $this->lastLoginAt = $lastLoginAt;
     }
@@ -163,5 +169,10 @@ class User
     public function getLoginCount(): int
     {
         return $this->loginCount;
+    }
+
+    public function getStatus(): UserStatus
+    {
+        return $this->status;
     }
 }

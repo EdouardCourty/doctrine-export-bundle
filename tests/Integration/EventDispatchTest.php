@@ -9,6 +9,7 @@ use Ecourty\DoctrineExportBundle\Enum\ExportFormat;
 use Ecourty\DoctrineExportBundle\Event\PostExportEvent;
 use Ecourty\DoctrineExportBundle\Event\PreExportEvent;
 use Ecourty\DoctrineExportBundle\Tests\Fixtures\Entity\User;
+use Ecourty\DoctrineExportBundle\Tests\Fixtures\Enum\UserStatus;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface as SymfonyEventDispatcherInterface;
 
 class EventDispatchTest extends IntegrationTestCase
@@ -210,6 +211,7 @@ class EventDispatchTest extends IntegrationTestCase
                 country: 'France',
                 zipCode: '75001',
                 loginCount: $i * 10,
+                status: UserStatus::ACTIVE,
                 bio: "User {$i} biography",
                 lastLoginAt: new \DateTime()
             );

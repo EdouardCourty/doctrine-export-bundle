@@ -46,6 +46,14 @@ final class ValueNormalizer
         }
 
         if (\is_object($value)) {
+            if ($value instanceof \BackedEnum) {
+                return $value->value;
+            }
+
+            if ($value instanceof \UnitEnum) {
+                return $value->name;
+            }
+
             if (method_exists($value, '__toString')) {
                 return (string) $value;
             }

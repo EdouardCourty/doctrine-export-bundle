@@ -6,6 +6,7 @@ namespace Ecourty\DoctrineExportBundle\Tests\Support;
 
 use Doctrine\ORM\EntityManagerInterface;
 use Ecourty\DoctrineExportBundle\Tests\Fixtures\Entity\User;
+use Ecourty\DoctrineExportBundle\Tests\Fixtures\Enum\UserStatus;
 
 class TestDataLoader
 {
@@ -30,6 +31,7 @@ class TestDataLoader
                 country: 'France',
                 zipCode: '75001',
                 loginCount: 142,
+                status: UserStatus::ACTIVE,
                 bio: 'Software developer passionate about clean code.',
                 lastLoginAt: new \DateTime('2024-12-01 09:15:00')
             ),
@@ -46,6 +48,7 @@ class TestDataLoader
                 country: 'France',
                 zipCode: '69001',
                 loginCount: 87,
+                status: UserStatus::INACTIVE,
                 bio: null,
                 lastLoginAt: new \DateTime('2024-11-15 14:30:00')
             ),
@@ -62,6 +65,7 @@ class TestDataLoader
                 country: 'UK',
                 zipCode: 'SW1A1AA',
                 loginCount: 256,
+                status: UserStatus::ACTIVE,
                 bio: 'Project manager with 15 years of experience.',
                 lastLoginAt: new \DateTime('2024-12-09 18:45:00')
             ),
@@ -78,6 +82,7 @@ class TestDataLoader
                 country: 'Germany',
                 zipCode: '10115',
                 loginCount: 389,
+                status: UserStatus::ACTIVE,
                 bio: 'UX designer, coffee addict.',
                 lastLoginAt: new \DateTime('2024-12-10 08:00:00')
             ),
@@ -94,6 +99,7 @@ class TestDataLoader
                 country: 'Spain',
                 zipCode: '28001',
                 loginCount: 12,
+                status: UserStatus::PENDING,
                 bio: 'Junior developer learning the ropes.',
                 lastLoginAt: null
             ),
@@ -111,6 +117,7 @@ class TestDataLoader
                 country: 'Italy',
                 zipCode: '00100',
                 loginCount: 201,
+                status: UserStatus::SUSPENDED,
                 bio: "Bio with\nnewlines\nand \"quotes\"",
                 lastLoginAt: new \DateTime('2024-12-08 12:30:00')
             ),
@@ -133,6 +140,7 @@ class TestDataLoader
         $batchSize = 500;
         $cities = ['Paris', 'London', 'Berlin', 'Madrid', 'Rome', 'Amsterdam', 'Brussels', 'Vienna', 'Prague', 'Warsaw'];
         $countries = ['France', 'UK', 'Germany', 'Spain', 'Italy', 'Netherlands', 'Belgium', 'Austria', 'Czech Republic', 'Poland'];
+        $statuses = [UserStatus::ACTIVE, UserStatus::INACTIVE, UserStatus::SUSPENDED, UserStatus::PENDING];
 
         for ($i = 0; $i < $count; ++$i) {
             $cityIndex = $i % \count($cities);
@@ -150,6 +158,7 @@ class TestDataLoader
                 country: $countries[$cityIndex],
                 zipCode: sprintf('%05d', 10000 + ($i % 90000)),
                 loginCount: $i % 500,
+                status: $statuses[$i % \count($statuses)],
                 bio: 0 === $i % 10 ? null : sprintf('Bio for user %d with some text content', $i),
                 lastLoginAt: 0 === $i % 5 ? null : new \DateTime(sprintf('2024-12-01 00:00:00 +%d hours', $i % 240))
             );
